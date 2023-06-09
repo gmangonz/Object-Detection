@@ -2,6 +2,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+
+def visualize_outputs(imgs, bboxes, scale, figsize, linewidth, color):
+
+    num_images = len(imgs)
+    titles = ['Image {}'.format(i+1) for i in range(num_images)]
+    
+    rows = np.floor(np.sqrt(num_images))
+    cols = np.ceil(num_images / rows)
+
+    fig, axes = plt.subplots(int(rows), int(cols), figsize=figsize)
+    for i, ax in enumerate(axes.flat):
+        if i < num_images:
+            image = imgs[i]
+            boxes = bboxes[i] * scale
+            ax.imshow(np.array(image))
+
+            for box in boxes:
+                y1, x1, y2, x2 = box
+                w, h = x2 - x1, y2 - y1
+                patch = plt.Rectangle(
+                    [x1, y1], w, h, fill=False, edgecolor=color, linewidth=linewidth)
+                ax.add_patch(patch)
+                
+            ax.axis('off')
+            ax.set_title(titles[i])
+        else:
+            ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+    
+
 def visualize_boxes(image, boxes, figsize=(7, 7), linewidth=1, color=[0, 0, 1]):
   
   """

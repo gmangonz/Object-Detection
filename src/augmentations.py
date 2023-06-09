@@ -85,13 +85,56 @@ class Converter(layers.Layer):
       return tf.concat( [ bboxes[..., :2] - bboxes[..., 2:] / 2.0, bboxes[..., :2] + bboxes[..., 2:] / 2.0 ], axis=-1 )
   
   def mask(self, bboxes):
+      
+      """
+      Input: 
+        bboxes: [bs, N, 4] - ymin, xmin, ymax, xmax 
+    
+      Returns:
+        mask: [bs, N, 4] where the N rows are filled with zeros where there were originally no bounding boxes
+      """
      
       count_pos_values = tf.math.count_nonzero(bboxes, axis=-1, dtype=tf.float32) # Count num of nonzeros in the rows
       rows_to_keep = tf.clip_by_value(count_pos_values, 0, 1)[None, ...] # Any row that had a nonzero value will be kept
+
       perm_T = tf.roll(tf.range(0, tf.rank(bboxes)), -1, axis=0) # Get the permutation
       col_vector = tf.transpose(rows_to_keep, perm_T) # Transform the rows_to_keep into a column vector 
+      
       mask = tf.repeat(col_vector, 4, axis=-1) # Repeat the column vector 4 times to match bboxes
       return mask
+  
+  def bbox_area(self, bboxes, img_size):
+      
+      """
+      Input:
+        bboxes: [bs, N, 4] or [N, 4] 
+    
+      Returns:
+        area: [bs, N,] or [N,] calculated area of the bounding boxes
+      """
+      
+      area = (bboxes[...,2] - bboxes[...,0])*(bboxes[...,3] - bboxes[...,1])
+      area = area * img_size[0] * img_size[1]
+      return area
+  
+  def remove_those_with_area_under_thresh(self, threshold, original_bboxes, aug_bboxes, img_size):
+      
+      """
+      After data augmentation, some of the bounding boxes may have experience a significant change in their area (e.g. moved outside of the image), remove those
+      The shapes of original_bboxes, aug_bboxes SHOULD be the same
+
+      Input:
+        original_bboxes: [bs, N, 4] or [N, 4] 
+        aug_bboxes: [bs, N, 4] or [N, 4] 
+    
+      Returns:
+        aug_bboxes: [bs, N, 4] or [N, 4]
+      """
+      zero_bboxes = tf.zeros_like(original_bboxes)
+      original_area = self.bbox_area(original_bboxes, img_size)
+      aug_area = self.bbox_area(aug_bboxes, img_size)
+      ratio = aug_area / original_area
+      return tf.where(tf.math.less(ratio[..., None], threshold), zero_bboxes, aug_bboxes)
 
 
 class RandomHorizontalFlip(Converter):
@@ -111,7 +154,7 @@ class RandomHorizontalFlip(Converter):
         flipped_img = imgs[:, ::-1, :, :]
         return flipped_img
 
-    def flip_bboxes(self, bboxes): # ymin, xmin, ymax, xmax
+    def flip_bboxes(self, bboxes):
         
         bbox_shape = tf.shape(bboxes) # [bs, n, 4]
         updates = 1. - bboxes[:, :, 2::-2] # [bs, n, 2] 
@@ -157,7 +200,7 @@ class RandomMirror(Converter):
         mirror_img = img[:, :, ::-1, :]
         return mirror_img
 
-    def mirror_bboxes(self, bboxes): # ymin, xmin, ymax, xmax
+    def mirror_bboxes(self, bboxes):
 
         """Flipping upside down means flipping along the y axis"""
 
@@ -192,6 +235,7 @@ class RandomMirror(Converter):
 class RandomZoom(Converter):
 
     def __init__(self, 
+                 threshold = 0.3,
                  probability=None, 
                  scale=0.25, 
                  diff=True, 
@@ -200,6 +244,7 @@ class RandomZoom(Converter):
         self.probability = probability
         self.scale = scale
         self.diff = diff
+        self.threshold = threshold
         super(RandomZoom, self).__init__(**kwargs)
     
     def get_scale_xy_diff(self, scale, dtype):
@@ -217,9 +262,9 @@ class RandomZoom(Converter):
 
     def zoom(self, inputs):
 
-        img, bboxes = inputs # img: h, w, 3 bboxes: n, 4
-        img_shape = tf.cast(tf.shape(img), dtype=bboxes.dtype) # h, w, c
-        bboxes = self.Un_Normalize(bboxes, img_shape) # MAY NEED TO CHECK THIS WITH COCO
+        img, bboxes_in = inputs # img: h, w, 3 bboxes: n, 4
+        img_shape = tf.cast(tf.shape(img), dtype=bboxes_in.dtype) # h, w, c
+        bboxes = self.Un_Normalize(bboxes_in, img_shape) # MAY NEED TO CHECK THIS WITH COCO
 
         # Get scales
         scale = (tf.math.maximum(-1., -self.scale), tf.constant(self.scale))
@@ -252,9 +297,12 @@ class RandomZoom(Converter):
         x_max = tf.reshape(tf.math.minimum(bbx_scaled[:,3], clip_box[3]), [-1, 1]) + pad_x_before
         bbox_resized = tf.concat([y_min, x_min, y_max, x_max], axis=1) # bboxes: y1, x1, y2, x2 
         bbox_out = self.Normalize(bbox_resized, img_shape)
+
+        # Postprocess Masking
         mask = self.mask(bboxes)
-        
-        return resized_image, bbox_out * mask
+        bbox_out = bbox_out * mask
+        bbox_out = self.remove_those_with_area_under_thresh(self.threshold, bboxes_in, bbox_out, img_shape)
+        return resized_image, bbox_out
 
     def get_batch_wise(self, inputs):
 
@@ -272,6 +320,7 @@ class RandomZoom(Converter):
 class RandomTranslate(Converter):
 
     def __init__(self, 
+                threshold = 0.3, 
                 probability=None, 
                 translate=0.2, 
                 diff=True, 
@@ -282,6 +331,7 @@ class RandomTranslate(Converter):
         self.translate = translate
         assert self.translate > 0 and self.translate < 1
         self.diff = diff
+        self.threshold = threshold
 
     def translate_inputs(self, inputs):
 
@@ -308,9 +358,12 @@ class RandomTranslate(Converter):
         x_max = tf.reshape(tf.math.minimum(bbx_translated[:,3], clip_box[3]), [-1, 1])
         
         bbx_translated = tf.concat([y_min, x_min, y_max, x_max], axis=1) # bboxes: y1, x1, y2, x2
+
+        # Postprocess Masking
         mask = self.mask(bboxes)
-        
-        return img_translate, bbx_translated * mask
+        bbx_translated = bbx_translated * mask
+        bbx_translated = self.remove_those_with_area_under_thresh(self.threshold, bboxes, bbx_translated, img_shape)
+        return img_translate, bbx_translated
 
     def get_batch_wise(self, inputs):
 
@@ -452,6 +505,7 @@ class RandomGamma(Converter):
 class RandomRotate(Converter):
 
     def __init__(self, 
+                 threshold = 0.3,
                  probability=None, 
                  rot=60,
                  **kwargs):
@@ -460,10 +514,11 @@ class RandomRotate(Converter):
 
         self.probability = probability
         self.angle = rot
+        self.threshold = threshold
 
     def rot(self, inputs):
 
-        img, bboxes = inputs[0], inputs[1]
+        img, bboxes_in = inputs[0], inputs[1]
         img_shape = tf.shape(img) # h, w, c
 
         rotate = (-np.abs(self.angle), np.abs(self.angle))
@@ -475,7 +530,7 @@ class RandomRotate(Converter):
         img_Rotate = tfa.image.rotate(img, angles=degree_angle*(np.pi/180), interpolation='nearest', fill_mode='nearest')
 
         # Rotate Bounding Boxes
-        bboxes = self.Un_Normalize(bboxes, img.shape)                                                                   # y1, x1, y2, x2
+        bboxes = self.Un_Normalize(bboxes_in, img.shape)                                                                   # y1, x1, y2, x2
         bbx_extra = tf.transpose(tf.concat([[bboxes[:, 2], bboxes[:, 1], bboxes[:, 0], bboxes[:, 3]]], axis=-1)) # y2, x1, y1, x2
         bbx_extrA = tf.transpose(tf.concat([[bboxes[:, 2], bboxes[:, 3], bboxes[:, 0], bboxes[:, 1]]], axis=-1)) # y2, x2, y1, x1
         bbx_extrB = tf.transpose(tf.concat([[bboxes[:, 0], bboxes[:, 1], bboxes[:, 2], bboxes[:, 3]]], axis=-1)) # y1, x2, y2, x1
@@ -502,15 +557,17 @@ class RandomRotate(Converter):
         img_shape = tf.cast(img_shape, dtype=bboxes.dtype)
         final_bbx_R = tf.clip_by_value(final_bbx_R, 0, img_shape[0])
         final_bbx_R = self.Normalize(final_bbx_R, img_shape)
-        mask = self.mask(bboxes)
 
-        return img_Rotate, final_bbx_R * mask
+        # Postprocess Masking
+        mask = self.mask(bboxes_in)
+        final_bbx_R = final_bbx_R * mask
+        final_bbx_R = self.remove_those_with_area_under_thresh(self.threshold, bboxes_in, final_bbx_R, img_shape)
+        return img_Rotate, final_bbx_R
            
     def get_batch_wise(self, inputs):
 
         img, bboxes, rand = inputs[0], inputs[1], inputs[2]
         augment_value = tf.random.uniform(shape=tf.shape(rand))
-        # tf.print(augment_value)
         return tf.cond(tf.math.less(augment_value, rand), lambda: self.rot((img, bboxes)), lambda: (img, bboxes))
 
     def call(self, inputs):
