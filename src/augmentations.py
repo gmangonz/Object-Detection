@@ -609,17 +609,19 @@ class Ada(tf.keras.Model):
     
     def call(self, inputs, training=False):
 
-        imgs, bboxes = inputs[0], inputs[1] # [bs, H, W, C], [bs, N, 4]
+        # Get inputs
+        imgs, bboxes = inputs[0], inputs[1] # [bs, H, W, C], [bs, N, 5]
+        bboxes, obj_class = tf.split(bboxes, [4, 1], axis=-1)
 
+        # Repeat the probability for each image in the batch
         dim1 = tf.shape(self.probability)[0]
         bs = tf.shape(imgs)[0]
-        n_repeats = bs / dim1
+        probability = tf.repeat(self.probability, tf.cast(bs / dim1, tf.int32))
 
-        probability = tf.repeat(self.probability, tf.cast(n_repeats, tf.int32))
-
+        # Perform augmentations
         if training and self.switch:
-          
-          return self.augmenter((imgs, bboxes, probability), training)
+            aug_output = self.augmenter((imgs, bboxes, probability), training)
+            return (aug_output[0], tf.concat([aug_output[1], obj_class], axis=-1))
 
         return inputs
 

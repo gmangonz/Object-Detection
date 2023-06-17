@@ -163,7 +163,6 @@ class BboxesToAnchors(Converter):
 
         # Make updates
         probability = tf.ones_like(grid_y, dtype=bbox_coord_grid.dtype) # [BS, N, 1]
-        # obj_class   = tf.random.uniform(shape=grid_y.shape, minval=0, maxval=100, dtype=bbox_coord_grid.dtype) # # [BS, N, 1] <-------------------------------------------------------------------------
         updates     = tf.concat([bbox_coord_grid, probability, obj_class], axis=-1) # [BS, N, 6]
 
         y_out = self.make_output(y_true_out, anchors_sorted_indxs, iou_sorted, grid_yx * tf.cast(mask, tf.int32), updates * mask)
