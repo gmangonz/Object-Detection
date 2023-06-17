@@ -107,7 +107,7 @@ class Converter(layers.Layer):
       
       """
       Input:
-        bboxes: [bs, N, 4] or [N, 4] 
+        bboxes: Normalized bboxs btwn 0-1 - [bs, N, 4] or [N, 4] 
     
       Returns:
         area: [bs, N,] or [N,] calculated area of the bounding boxes
@@ -124,6 +124,7 @@ class Converter(layers.Layer):
       The shapes of original_bboxes, aug_bboxes SHOULD be the same
 
       Input:
+        threshold: threshold to determine if there was a significant change
         original_bboxes: [bs, N, 4] or [N, 4] 
         aug_bboxes: [bs, N, 4] or [N, 4] 
     

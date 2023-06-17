@@ -15,7 +15,7 @@ def get_tfrecordkeys(tfrecord_path):
     return keys
 
 
-def read_tfrecord(tfrecord_path, return_values=False):
+def read_tfrecord(tfrecord_path, return_values=False, coco=False):
 
     feature_dict = {}
     for rec in tf.data.TFRecordDataset([str(tfrecord_path)]):
@@ -44,4 +44,8 @@ def read_tfrecord(tfrecord_path, return_values=False):
                     values = feature.WhichOneof('kind')
 
             feature_dict[key] = values
+            
+        # Takes too long
+        if coco:
+            break
     return feature_dict
