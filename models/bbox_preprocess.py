@@ -79,6 +79,7 @@ class TransformBoxes(Converter):
         grid_y               = tf.gather(grid_y, importance, axis=1, batch_dims=-1) # [BS, N, 1]
         grid_x               = tf.gather(grid_x, importance, axis=1, batch_dims=-1) # [BS, N, 1]
         optimal_anchors      = anchors_sorted_indxs[..., 0][..., None] # [BS, N, 1] get the INDEX of the optimal anchor 
+        obj_class            = tf.gather(obj_class, importance, axis=1, batch_dims=-1) # [BS, N, 1]
 
         # Make indices
         indices   = tf.concat([grid_y, grid_x, optimal_anchors], axis=-1) # [BS, N, 3]
@@ -107,91 +108,71 @@ class TransformBoxes(Converter):
         return a, b, c
 
 
-########################### CODE BELOW DOES THE SAME AS ABOVE BUT CAN ADD ASSIGN THE SECOND/THIRD BEST ANCHOR IN CASE THE OPTIMAL ANCHOR IS USED, HOWEVER IT IS ~40 TIMES SLOWER ###########################
+########################### CODE BELOW DOES THE SAME AS ABOVE BUT CAN ADD ASSIGN THE SECOND/THIRD BEST ANCHOR IN CASE THE OPTIMAL ANCHOR IS USED, HOWEVER IT IS ~20 TIMES SLOWER ###########################
 
 input_signature = (tf.TensorSpec(shape=(None, None, None, 3, 6), dtype=tf.float32), # y_true_out
-                   tf.TensorSpec(shape=(None, None, 3), dtype=tf.int32),            # anchors_sorted_indxs
-                   tf.TensorSpec(shape=(None, None, 3), dtype=tf.float32),          # iou_sorted
-                   tf.TensorSpec(shape=(None, None, 2), dtype=tf.int32),            # grid_yx
-                   tf.TensorSpec(shape=(None, None, 6), dtype=tf.float32))          # data
+                   tf.TensorSpec(shape=(None, 3), dtype=tf.int32),                  # anchors_sorted_indxs
+                   tf.TensorSpec(shape=(None, 3), dtype=tf.float32),                # iou_sorted
+                   tf.TensorSpec(shape=(None, 3), dtype=tf.int32),                  # grid_yx
+                   tf.TensorSpec(shape=(None, 6), dtype=tf.float32))                # data
 
 @tf.function(input_signature=input_signature)
 def make_output(y_true_out, anchors_sorted_indxs, iou_sorted, grid_yx, data):
 
-    """
-    Inputs:
-        y_true_out: [BS, grid_size, grid_size, num_anchors, 6] initialized as 0's
-        anchors_sorted_indxs: [BS, N, num_anchors] for each bbox, the anchor indices in order of IOU
-        iou_sorted: [BS, N, num_anchors] sort the anchors for each box by IOU
-        grid_yx: [BS, N, (gridy, gridx)]
-        data: [BS, N, (y, x, h, w, p, c)]
-
-    Output:
-        y_true_out
-    """
-
-    out_shape = tf.shape(anchors_sorted_indxs) # [BS, N, num_anchors]
+    in_shape = tf.shape(anchors_sorted_indxs) # [Num_objects_in_whole_batch, 3]
 
     indexes = tf.TensorArray(tf.int32, 1, dynamic_size=True)
     updates = tf.TensorArray(tf.float32, 1, dynamic_size=True)
-    idx = 0
-
-    indexes = indexes.write(idx, [0, 0, 0, 0])
-    updates = updates.write(idx, [0, 0, 0, 0, 0, 0])
     
-    for batch in tf.range(out_shape[0]):
-        for n in tf.range(out_shape[1]):
-            
-            # Get the respective values
-            grid = grid_yx[batch][n]
-            info = data[batch][n]
-            
-            # If there is any coordinate info
-            if tf.math.count_nonzero(info, dtype=tf.bool):
-                
-                values_seen = indexes.stack()
+    idx     = 0
+    indexes = indexes.write(idx, [-1, -1, -1, -1])
+    updates = updates.write(idx, [-1, -1, -1, -1, -1, -1])
+    
+    for n in tf.range(in_shape[0]):
 
-                # Get anchors sorted by IOU for the respective bbox
-                anchors_sorted = anchors_sorted_indxs[batch][n]
-                anchors_iou_sorted = iou_sorted[batch][n]
+        # Get the respective values
+        anchors_sorted     = anchors_sorted_indxs[n]
+        anchors_iou_sorted = iou_sorted[n]  
+        grid               = grid_yx[n]
+        info               = data[n]
+        values_seen        = indexes.stack()
 
-                # Get optimal anchor and its corresponding IOU
-                optimal_anchor = anchors_sorted[0]
+        # Get optimal anchor
+        optimal_anchor = anchors_sorted[0]
 
-                # Set the new value to write
-                gridy, gridx = tf.split(grid, 2)
-                new_value = tf.stack([batch, gridy[0], gridx[0], optimal_anchor])
-                indexes = indexes.write(idx, new_value)
-                updates = updates.write(idx, info)
-                idx += 1
+        # Set the new value to write
+        new_value = tf.stack([grid[0], grid[1], grid[2], optimal_anchor])
+        indexes   = indexes.write(idx, new_value)
+        updates   = updates.write(idx, data[n])
+        idx += 1
 
-                # In this batch, and in the respective cell, determine if we have the optimal anchor taken
-                element_wise_comparison = tf.reduce_all(tf.math.equal(values_seen, new_value), axis=-1, keepdims=True)
+        # In this batch, and in the respective cell, determine if we have the optimal anchor taken
+        element_wise_comparison = tf.reduce_all(tf.math.equal(values_seen, new_value), axis=-1, keepdims=True)
 
-                # Optimal anchor has been taken
-                if tf.reduce_any(element_wise_comparison):
+        # Optimal anchor has been taken
+        if tf.reduce_any(element_wise_comparison):
 
-                    # "Erase" entry 
-                    idx -= 1
+            # "Erase" entry 
+            idx -= 1
 
-                    # Get number of times he have used this cell in the grid
-                    num_instances_we_use_cell = tf.math.equal(values_seen[..., 0:-1], new_value[0:-1]) # If we are here, then this should always be atleast 1
-                    num_anchors_seen_in_cell = tf.where(tf.reduce_all(num_instances_we_use_cell, axis=-1))
-                    num_anchors_seen_in_cell = tf.shape(num_anchors_seen_in_cell)[0] # Value between 1 and 3
+            # Get number of times he have used this cell in the grid
+            num_instances_we_use_cell = tf.math.equal(values_seen[..., 0:-1], new_value[0:-1]) # If we are here, then this should always be atleast 1
+            num_anchors_seen_in_cell  = tf.where(tf.reduce_all(num_instances_we_use_cell, axis=-1))
+            num_anchors_seen_in_cell  = tf.shape(num_anchors_seen_in_cell)[0] # Value between 1 and 3
 
-                    # If we used at most 2 anchors for this cell, then grab the next one
-                    if num_anchors_seen_in_cell < 3:
+            # If we used at most 2 anchors for this cell, then grab the next one
+            if num_anchors_seen_in_cell < 3:
 
-                        next_anchor = anchors_sorted[num_anchors_seen_in_cell] # Don't need to add +1 because the value is between 1 and 3
-                        anchor_iou = anchors_iou_sorted[num_anchors_seen_in_cell]
+                next_anchor = anchors_sorted[num_anchors_seen_in_cell] # Don't need to add +1 because the value is between 1 and 3
+                anchor_iou  = anchors_iou_sorted[num_anchors_seen_in_cell]
 
-                        # Is the IOU meaningfull?
-                        if anchor_iou > 0.5:
-                            # Write the anchor
-                            new_value = tf.stack([batch, gridy[0], gridx[0], next_anchor])
-                            indexes = indexes.write(idx, new_value)
-                            updates = updates.write(idx, info)
-                            idx += 1
+                # Is the IOU meaningfull?
+                if anchor_iou > 0.5:
+                    # Write the anchor
+                    indexes = indexes.write(idx, [grid[0], grid[1], grid[2], next_anchor])
+                    updates = updates.write(idx, data[n])
+                    idx += 1
+
     return tf.tensor_scatter_nd_update(y_true_out, indexes.stack(), updates.stack())
 
 
@@ -229,6 +210,7 @@ class BboxesToAnchors(Converter):
         union = box1_area + tf.transpose(box2_area)[None, ...] - intersection
         return intersection / union # [bs, N, num_anchors] where bs_i, N_j, num_anchors_k is the IOU between boxes1[bs_i, N_j, ...] and anchors[num_anchors_k, ...]
 
+
     def bboxes_to_grid(self, bboxes, grid_size, anchors, num_anchors):
         """
         Inputs:
@@ -239,7 +221,8 @@ class BboxesToAnchors(Converter):
         Output:
             anchor_targets
         """
-        bs                = tf.shape(bboxes)[0]
+        bboxes_shape      = tf.shape(bboxes)
+        bs                = bboxes_shape[0]
         y_true_out        = tf.zeros((bs, grid_size, grid_size, num_anchors, 6)) # [BS, grid_size, grid_size, num_anchors, 6]
         bboxes, obj_class = tf.split(bboxes, [4, 1], axis=-1) # # [BS, N, 4], [BS, N, 1]
         
@@ -270,16 +253,32 @@ class BboxesToAnchors(Converter):
         bbox_coord_grid      = tf.gather(bbox_coord_grid, importance, axis=1, batch_dims=-1) # [BS, N, 4]
         grid_y               = tf.gather(grid_y, importance, axis=1, batch_dims=-1) # [BS, N, 1]
         grid_x               = tf.gather(grid_x, importance, axis=1, batch_dims=-1) # [BS, N, 1]
+        obj_class            = tf.gather(obj_class, importance, axis=1, batch_dims=-1) # [BS, N, 1]
 
-        # Make grid
-        grid_yx     = tf.concat([grid_y, grid_x], axis=-1) # [BS, N, 2]
+        # Make indices
+        indices   = tf.concat([grid_y, grid_x], axis=-1) # [BS, N, 2]
+        indices   = tf.reshape(indices, shape=[-1, 2]) # [BS * N, 2]
+        BS_grid   = tf.meshgrid(tf.range(bs), tf.range(bboxes_shape[1]))[0]
+        BS_x_N    = tf.reshape(tf.transpose(BS_grid), [-1, 1]) # [BS * N, 1]
+        indices   = tf.concat([BS_x_N, indices], axis=-1) # [BS * N, 3]
 
         # Make updates
         probability = tf.ones_like(grid_y, dtype=bbox_coord_grid.dtype) # [BS, N, 1]
-        updates     = tf.concat([bbox_coord_grid, probability, obj_class], axis=-1) # [BS, N, 6]
+        updates     = tf.concat([bbox_coord_grid, probability, obj_class], axis=-1) * mask # [BS, N, 6]
 
-        y_out = make_output(y_true_out, anchors_sorted_indxs, iou_sorted, grid_yx * tf.cast(mask, tf.int32), updates * mask)
-        return y_out
+        # Reshape
+        updates              = tf.reshape(updates, shape=[-1, 6]) # [BS * N, 6]
+        anchors_sorted_indxs = tf.reshape(anchors_sorted_indxs, [-1, num_anchors]) # [BS * N, 3]
+        iou_sorted           = tf.reshape(iou_sorted, [-1, num_anchors]) # [BS * N, 3]
+
+        # Filter out where we don't have bbox info
+        mask_out             = tf.cast(tf.math.count_nonzero(updates, axis=-1), tf.bool)
+        anchors_sorted_indxs = tf.boolean_mask(anchors_sorted_indxs, mask_out)
+        iou_sorted           = tf.boolean_mask(iou_sorted, mask_out)
+        indices              = tf.boolean_mask(indices, mask_out)
+        updates              = tf.boolean_mask(updates, mask_out)
+
+        return make_output(y_true_out, anchors_sorted_indxs, iou_sorted, indices, updates)
     
     def call(self, bboxes):
 
