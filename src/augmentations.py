@@ -92,16 +92,10 @@ class Converter(layers.Layer):
     
       Returns:
         mask: [bs, N, 4] where the N rows are filled with zeros where there were originally no bounding boxes
-      """
-     
-      count_pos_values = tf.math.count_nonzero(bboxes, axis=-1, dtype=tf.float32) # Count num of nonzeros in the rows
-      rows_to_keep = tf.clip_by_value(count_pos_values, 0, 1)[None, ...] # Any row that had a nonzero value will be kept
 
-      perm_T = tf.roll(tf.range(0, tf.rank(bboxes)), -1, axis=0) # Get the permutation
-      col_vector = tf.transpose(rows_to_keep, perm_T) # Transform the rows_to_keep into a column vector 
-      
-      mask = tf.repeat(col_vector, 4, axis=-1) # Repeat the column vector 4 times to match bboxes
-      return mask
+      """
+      mask = tf.math.count_nonzero(bboxes, axis=-1, dtype=tf.bool, keepdims=True)
+      return tf.repeat(tf.cast(mask, dtype=tf.float32), 4, axis=-1)
   
   def bbox_area(self, bboxes, img_size):
       
@@ -182,7 +176,6 @@ class RandomHorizontalFlip(Converter):
     def call(self, inputs):
         
         return self.get_batch_wise(inputs)
-        return tf.cond(tf.less(tf.random.uniform([], seed=7), self.probability), lambda: (self.flip(img), self.flip_bboxes(bboxes)), lambda: inputs)
 
 
 class RandomMirror(Converter):
@@ -230,7 +223,6 @@ class RandomMirror(Converter):
     def call(self, inputs):
         
         return self.get_batch_wise(inputs)
-        return tf.cond(tf.less(tf.random.uniform([], seed=6), self.probability), lambda: (self.mirror_img(img), self.mirror_bboxes(bboxes)), lambda: inputs)
 
 
 class RandomZoom(Converter):
@@ -315,7 +307,6 @@ class RandomZoom(Converter):
         
         output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
         return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-        return tf.cond(tf.less(tf.random.uniform([], seed=5), self.probability), lambda: tf.map_fn(self.zoom, elems=inputs), lambda: inputs)
 
 
 class RandomTranslate(Converter):
@@ -376,7 +367,6 @@ class RandomTranslate(Converter):
         
         output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
         return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-    # return tf.cond(tf.less(tf.random.uniform([], seed=4), self.probability), lambda: tf.map_fn(self.translate_inputs, elems=inputs), lambda: inputs)
 
 
 class AddNoise(Converter):
@@ -406,12 +396,6 @@ class AddNoise(Converter):
         
         output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
         return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-    # def call(self, inputs):
-    #     imgs, bboxes = inputs[0], inputs[1]
-    #     noise = tf.random.normal(tf.shape(imgs), mean=0, stddev=0.075, dtype=imgs.dtype)
-    #     img_noise = tf.clip_by_value(imgs + noise, 0.0, 1.0)
-    #     img_noise = tf.cast(img_noise, imgs.dtype)
-    #     return tf.cond(tf.less(tf.random.uniform([], seed=3), self.probability), lambda: (img_noise, bboxes), lambda: (imgs, bboxes))
 
 
 class GaussianBlur(Converter):
@@ -463,7 +447,6 @@ class GaussianBlur(Converter):
         
         output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
         return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-        return tf.cond(tf.less(tf.random.uniform([], seed=2), self.probability), lambda: (self.blur_image(imgs), bboxes), lambda: inputs)
 
 
 class RandomGamma(Converter):
@@ -500,7 +483,6 @@ class RandomGamma(Converter):
       
       output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
       return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-      return tf.cond(tf.less(tf.random.uniform([], seed=1), self.probability), lambda: tf.map_fn(self.adjust_gamma, elems=inputs), lambda: inputs)
 
 
 class RandomRotate(Converter):
@@ -575,7 +557,6 @@ class RandomRotate(Converter):
         
         output_sign = (tf.TensorSpec(shape=inputs[0].shape[1:], dtype=inputs[0].dtype), tf.TensorSpec(shape=inputs[1].shape[1:], dtype=inputs[1].dtype))
         return tf.map_fn(self.get_batch_wise, elems=inputs, fn_output_signature = output_sign)
-        return tf.cond(tf.less(tf.random.uniform([], seed=0), self.probability), lambda: tf.map_fn(self.rot, elems=inputs), lambda: inputs)
 
 
 class AugProbability(layers.Layer):
