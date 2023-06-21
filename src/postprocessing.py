@@ -1,4 +1,5 @@
 import tensorflow as tf
+from src.utils import yxhw_to_yxyx
 
 def bbox_iou(boxesA, boxesB):
   
@@ -87,6 +88,42 @@ def NMS(boxes, scores, iou_threshold):
     return selected_boxes, selected_scores, selected_indices
 
 
+def non_max_suppression(bbox, confs, obj_class_probs, max_output_size=50, max_output_size_per_class=30, iou_threshold=0.5, confidence_threshold=0.5):
+
+    """
+    Inputs:
+        bbox: [BS, gy, gx, NUM_ANCHORS, 4]
+        confs: [BS, gy, gx, NUM_ANCHORS, 1]
+        obj_class_probs: [BS, gy, gx, NUM_ANCHORS, 1]
+        max_output_size: int
+        max_output_size_per_class: int
+        iou_threshold: int
+        confidence_threshold: int
+
+    Outputs:
+        boxes: [BS, max_detections, 4] tensor containing the non-max suppressed boxes
+        scores: [BS, max_detections] tensor containing the scores for the boxes.
+        classes: [BS, max_detections] tensor containing the class for boxes.
+        valid_detections:
+    
+    """
+
+    bs = tf.shape(bbox)[0]
+    bbox = yxhw_to_yxyx(bbox)
+    bbox = tf.reshape(bbox, (bs, -1, 1, 4))
+
+    scores = confs * obj_class_probs
+    scores = tf.reshape(scores, (bs, -1, tf.shape(scores)[-1]))
+
+    boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(boxes=bbox,
+                                                                                     scores=scores,
+                                                                                     max_output_size_per_class=max_output_size_per_class,
+                                                                                     max_total_size=max_output_size,
+                                                                                     iou_threshold=iou_threshold,
+                                                                                     score_threshold=confidence_threshold)
+    return boxes, scores, classes, valid_detections
+
+
 def myNMS(boxes_pred, threshold_1=0.7, threshold_2=0.4):
   
   """
@@ -133,17 +170,24 @@ def myNMS(boxes_pred, threshold_1=0.7, threshold_2=0.4):
 def decode_model_outputs(pred, anchors):
 
   """
-  pred: [BS, Grid Size Y, Grid Size X, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, probability, class_label)
-  anchors: [BS, w, h]
-  
+  Inputs:
+    pred: [BS, Grid Size Y, Grid Size X, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, probability, class_label)
+    anchors: [BS, w, h]
+
+  Outputs: 
+    bbox: [BS, gy, gx, NUM_ANCHORS, 4] - predicted global bbox -> used to calculate IOU
+    confidence: [BS, gy, gx, NUM_ANCHORS, 1]
+    obj_class: [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
+    pred_cell_box: [BS, gy, gx, NUM_ANCHORS, 4] - predicted local bbox -> used for regression loss
+
   """
 
   grid_size = tf.shape(pred)[1:3]
-  box_yx, box_hw, confidence, obj_class = tf.split(pred, (2, 2, 1, 1), axis=-1)
+  box_yx, box_hw, confidence, obj_class = tf.split(pred, (2, 2, 1, -1), axis=-1)
 
   box_yx        = tf.sigmoid(box_yx) # [BS, gy, gx, NUM_ANCHORS, 2]
   confidence    = tf.sigmoid(confidence) # [BS, gy, gx, NUM_ANCHORS, 1]
-  obj_class     = tf.sigmoid(obj_class) # [BS, gy, gx, NUM_ANCHORS, 1]
+  obj_class     = tf.sigmoid(obj_class) # [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
   pred_cell_box = tf.concat((box_yx, box_hw), axis=-1) # [BS, gy, gx, NUM_ANCHORS, 4]
 
   grid = tf.meshgrid(tf.range(grid_size[0], dtype=tf.float32), tf.range(grid_size[1], dtype=tf.float32))

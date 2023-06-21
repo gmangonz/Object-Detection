@@ -7,7 +7,7 @@ def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda
         """
         y_true: [BS, grid_size, grid_size, num_anchors, (y, x, h, w, p, obj_class)] - output of TransformBoxes.bboxes_to_grid()
         
-        y_pred: [BS, Grid Size Y, Grid Size X, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, p, obj_class)
+        y_pred: [BS, gridy, gridx, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, p, obj_class)
 
         y, x, h, w are values between 0 and 1
         """
@@ -18,7 +18,7 @@ def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda
         pred_hw = pred_cell_box[..., 2:]
 
         # Split y_true and get scale to give higher weight to smaller boxes
-        true_yxhw, true_confidence, true_class = tf.split(y_true, (4, 1, 1), axis=-1) # [BS, gy, gx, anchors, (y, x, h, w)], [BS, gy, gx, anchors, 1], [BS, gy, gx, anchors, 1]
+        true_yxhw, true_confidence, true_obj_class = tf.split(y_true, (4, 1, 1), axis=-1) # [BS, gy, gx, anchors, (y, x, h, w)], [BS, gy, gx, anchors, 1], [BS, gy, gx, anchors, 1]
         true_yx = true_yxhw[..., :2] # Values between 0 and 1 to indicate where they are locally located within a cell
         true_hw = true_yxhw[..., 2:] # Values between 0 and 1 to indicate local size within a cell
         bbox_loss_scale = 2.0 - 1.0 * true_hw[..., 0] * true_hw[..., 1]
@@ -50,9 +50,7 @@ def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda
         conf_loss =  obj_mask * conf_loss + lambda_noobj * (1.-obj_mask) * ignore_mask * conf_loss
 
         # Get Classification Loss
-        obj_class_pred = tf.cast(pred_obj_class*NUM_CLASSES, tf.int32)
-        obj_class_pred = tf.squeeze(tf.one_hot(obj_class_pred, NUM_CLASSES, axis=-1)) # [BS, gy, gx, anchor, NUM_CLASSES] 
-        class_loss = K.sparse_categorical_crossentropy(true_class, obj_class_pred) # [BS, gy, gx, anchor]
+        class_loss = K.sparse_categorical_crossentropy(true_obj_class, pred_obj_class) # [BS, gy, gx, anchor]
 
         yx_loss = tf.reduce_sum(yx_loss, axis=(1, 2, 3))
         hw_loss = tf.reduce_sum(hw_loss, axis=(1, 2, 3))

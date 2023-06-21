@@ -9,13 +9,11 @@ class TransformBoxes(Converter):
                  anchors = [[(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
                             [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
                             [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)]],
-                 image_shape = None,
                  **kwargs):
 
         super(TransformBoxes, self).__init__(**kwargs)
         self.grid_sizes = grid_sizes
         self.anchors = anchors
-        self.image_shape = image_shape
 
     def iou_bbox_v_anchors(self, boxes1, anchors):
 
@@ -39,7 +37,7 @@ class TransformBoxes(Converter):
     def bboxes_to_grid(self, bboxes, grid_size, anchors, num_anchors):
         """
         Inputs:
-            bboxes: shape - [BS, N, (y2, x2, y1, x1)]
+            bboxes: shape - [BS, N, (y2, x2, y1, x1, obj_class)]
             grid_size: int determining the grid size
             anchors: respective anchors to use [BS, W, H]
             num_anchors: number of anchors for the given grid size (aka num anchors for each scale)
@@ -89,9 +87,9 @@ class TransformBoxes(Converter):
         indices   = tf.concat([BS_x_N, indices], axis=-1) # [BS * N, 4]
 
         # Make updates
-        probability = tf.ones_like(grid_y, dtype=bbox_coord_grid.dtype) # [BS, N, 1]
-        updates     = tf.concat([bbox_coord_grid, probability, obj_class], axis=-1) * mask # [BS, N, 6]
-        updates     = tf.reshape(updates, shape=[-1, 6]) # [BS * N, 6]
+        confidence = tf.ones_like(grid_y, dtype=bbox_coord_grid.dtype) # [BS, N, 1]
+        updates    = tf.concat([bbox_coord_grid, confidence, obj_class], axis=-1) * mask # [BS, N, 6]
+        updates    = tf.reshape(updates, shape=[-1, 6]) # [BS * N, 6]
         
         # Filter out where we don't have bbox info
         final_updates = tf.boolean_mask(updates, tf.cast(tf.math.count_nonzero(updates, axis=-1), tf.bool)) # Remove those who don't have bboxes
@@ -102,9 +100,9 @@ class TransformBoxes(Converter):
     
     def call(self, bboxes):
 
-        a = self.bboxes_to_grid(bboxes, self.grid_sizes[0], self.anchors[0], num_anchors=3)
-        b = self.bboxes_to_grid(bboxes, self.grid_sizes[1], self.anchors[1], num_anchors=3)
-        c = self.bboxes_to_grid(bboxes, self.grid_sizes[2], self.anchors[2], num_anchors=3)
+        a = self.bboxes_to_grid(bboxes, self.grid_sizes[0], self.anchors[0], num_anchors=3) # [BS, grid_sizes[0], grid_sizes[0], 3, 6]
+        b = self.bboxes_to_grid(bboxes, self.grid_sizes[1], self.anchors[1], num_anchors=3) # [BS, grid_sizes[1], grid_sizes[1], 3, 6]
+        c = self.bboxes_to_grid(bboxes, self.grid_sizes[2], self.anchors[2], num_anchors=3) # [BS, grid_sizes[2], grid_sizes[2], 3, 6]
         return a, b, c
 
 

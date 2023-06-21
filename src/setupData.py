@@ -6,6 +6,14 @@ from .utils import Un_Normalize, Normalize, yxyx_to_yxhw
 
 def if_resize_with_path(image, bbox, image_shape):
 
+    """
+    Resize the image by keeping the aspect ratio
+    
+    Returns: 
+        image - normalized resized image
+        bbox - normalized bbox
+    """
+
     img_h = tf.shape(image)[0]
     img_w = tf.shape(image)[1]
     new_h = image_shape[0]
@@ -62,7 +70,6 @@ def load_voc_dataset(args, voc_path, augment_func = None, split = 'train'):
     print(f'Loading {split} dataset from {voc_path}...')
 
     features = read_tfrecord(voc_path)
-    # useful_features_keys = ['image/height', 'image/width', 'image/encoded', 'image/object/bbox/xmin', 'image/object/bbox/ymin', 'image/object/bbox/xmax', 'image/object/bbox/ymax', 'image/object/class/text']
     useful_features_keys = ['image/encoded', 'image/filename', 'image/format', 'image/height', 'image/width',
                             'image/object/bbox/xmax', 'image/object/bbox/xmin', 'image/object/bbox/ymax', 'image/object/bbox/ymin', 
                             'image/object/class/text', 'image/source_id']
@@ -103,7 +110,6 @@ def _parse_features_COCO(example_proto, image_shape, features, resize_with_path=
     if resize_with_path:
         image, bbox = if_resize_with_path(image, bbox, image_shape)
 
-    # tf.constant(class_label)
     bbox = tf.concat([bbox, tf.cast(class_label[..., None], dtype=bbox.dtype)], axis=-1)
     return image, bbox
 
@@ -133,7 +139,7 @@ def load_coco_dataset(args, coco_path, augment_func = None, split = 'train'):
     dataset = dataset.map(lambda x: _parse_features_COCO(x, image_shape = args.img_size, features = useful_features), num_parallel_calls=AUTOTUNE)
     dataset = dataset.padded_batch(args.batch_size, drop_remainder=True)
     if (augment_func != None) and (split == 'train'):
-        dataset = dataset.map(lambda x, y: augment_func((x, y)), num_parallel_calls=tf.data.AUTOTUNE) # x - image, y - (bbox, bbox, bbox, bbox)
+        dataset = dataset.map(lambda x, y: augment_func((x, y)), num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
