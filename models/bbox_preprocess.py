@@ -39,12 +39,12 @@ class TransformBoxes(Converter):
     def bboxes_to_grid(self, bboxes, grid_size, anchors, num_anchors):
         """
         Inputs:
-            bboxes: shape - [BS, N, (y, x, h, w)]
+            bboxes: shape - [BS, N, (y2, x2, y1, x1)]
             grid_size: int determining the grid size
-            anchors: respective anchors to use
+            anchors: respective anchors to use [BS, W, H]
             num_anchors: number of anchors for the given grid size (aka num anchors for each scale)
         Output:
-            anchor_targets
+            anchor_targets - [BS, grid_size, grid_size, num_anchors, (y, x, h, w, p, obj_class)]
         """
         bboxes_shape      = tf.shape(bboxes)
         bs                = bboxes_shape[0]
