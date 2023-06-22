@@ -92,7 +92,7 @@ def non_max_suppression(bbox, confs, obj_class_probs, num_classes, max_output_si
 
     """
     Inputs:
-        bbox: [BS, gy, gx, NUM_ANCHORS, 4]
+        bbox: [BS, gy, gx, NUM_ANCHORS, (y, x, h, w)]
         confs: [BS, gy, gx, NUM_ANCHORS, 1]
         obj_class_probs: [BS, gy, gx, NUM_ANCHORS, 1] or [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
         max_output_size: int
@@ -101,7 +101,7 @@ def non_max_suppression(bbox, confs, obj_class_probs, num_classes, max_output_si
         confidence_threshold: int
 
     Outputs:
-        boxes: [BS, max_detections, 4] tensor containing the non-max suppressed boxes
+        boxes: [BS, max_detections, (y, x, y, x)] tensor containing the non-max suppressed boxes
         scores: [BS, max_detections] tensor containing the scores for the boxes.
         classes: [BS, max_detections] tensor containing the class for boxes.
         valid_detections:
@@ -134,10 +134,10 @@ def decode_model_outputs(pred, anchors):
     anchors: [BS, w, h]
 
   Outputs: 
-    bbox: [BS, gy, gx, NUM_ANCHORS, 4] - predicted global bbox -> used to calculate IOU
+    bbox: [BS, gy, gx, NUM_ANCHORS, (y, x, h, w)] - predicted global bbox -> used to calculate IOU
     confidence: [BS, gy, gx, NUM_ANCHORS, 1]
     obj_class: [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
-    pred_cell_box: [BS, gy, gx, NUM_ANCHORS, 4] - predicted local bbox -> used for regression loss
+    pred_cell_box: [BS, gy, gx, NUM_ANCHORS, (y, x, h, w)] - predicted local bbox -> used for regression loss
 
   """
 

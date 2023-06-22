@@ -91,7 +91,7 @@ class MyModel(tf.keras.Model):
         self.train_step_counter.assign_add(1)
 
         # Augment images and get mask
-        augmented_images, augmented_bboxes = self.ada(ds_input, training=True) # augmented_images - [BS, H, W, C], augmented_bboxes - [BS, N, (y, x, y, x, obj_class)]
+        augmented_images, augmented_bboxes = self.ada(ds_input, training=True) # augmented_images - [BS, H, W, C], augmented_bboxes - [BS, N, (y1, x1, y2, x2, obj_class)]
         true_mask = tf.math.count_nonzero(augmented_bboxes, axis=-1,  dtype=tf.bool)[..., None]
         true_mask = tf.cast(true_mask, tf.float32) # (BS, N, 1)
 
