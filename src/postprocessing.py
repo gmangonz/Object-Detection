@@ -11,8 +11,8 @@ def bbox_iou(boxesA, boxesB):
   """
 
   # Get coordinates
-  yA_1, xA_1, yA_2, xA_2 = tf.split(boxesA, 4, axis=-1) # [BS, gy, gx, anchor, 1]
-  yB_1, xB_1, yB_2, xB_2 = tf.split(boxesB, 4, axis=-1) # [BS, gy, gx, anchor, 1]
+  yA_1, xA_1, yA_2, xA_2 = tf.split(boxesA, 4, axis=-1) # [BS, gy, gx, anchor, 1] x 4
+  yB_1, xB_1, yB_2, xB_2 = tf.split(boxesB, 4, axis=-1) # [BS, gy, gx, anchor, 1] x 4
 
   # Find the coordinate of the overlapping boxes
   xI1 = tf.maximum(xA_1, tf.linalg.matrix_transpose(xB_1)) # [BS, gy, gx, anchor, 1], [BS, gy, gx, 1, anchor] -> [BS, gy, gx, anchor, anchor] 
@@ -30,7 +30,7 @@ def bbox_iou(boxesA, boxesB):
   # Get overlap
   union = (bboxesA_area + tf.linalg.matrix_transpose(bboxesB_area)) - inter_area
 
-  return tf.clip_by_value(inter_area / union, 0.0, 1.0)
+  return tf.clip_by_value(inter_area / union, 0.0, 1.0) # [BS, gy, gx, anchor, anchor] 
 
 
 def iou(boxesA, boxesB):
@@ -88,13 +88,13 @@ def NMS(boxes, scores, iou_threshold):
     return selected_boxes, selected_scores, selected_indices
 
 
-def non_max_suppression(bbox, confs, obj_class_probs, max_output_size=50, max_output_size_per_class=30, iou_threshold=0.5, confidence_threshold=0.5):
+def non_max_suppression(bbox, confs, obj_class_probs, num_classes, max_output_size=50, max_output_size_per_class=30, iou_threshold=0.5, confidence_threshold=0.5):
 
     """
     Inputs:
         bbox: [BS, gy, gx, NUM_ANCHORS, 4]
         confs: [BS, gy, gx, NUM_ANCHORS, 1]
-        obj_class_probs: [BS, gy, gx, NUM_ANCHORS, 1]
+        obj_class_probs: [BS, gy, gx, NUM_ANCHORS, 1] or [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
         max_output_size: int
         max_output_size_per_class: int
         iou_threshold: int
@@ -112,59 +112,18 @@ def non_max_suppression(bbox, confs, obj_class_probs, max_output_size=50, max_ou
     bbox = yxhw_to_yxyx(bbox)
     bbox = tf.reshape(bbox, (bs, -1, 1, 4))
 
-    scores = confs * obj_class_probs
-    scores = tf.reshape(scores, (bs, -1, tf.shape(scores)[-1]))
+    obj_dim = tf.shape(obj_class_probs)[-1]
+    obj_class_probs = tf.cond( tf.math.equal( obj_dim, num_classes ), lambda: obj_class_probs, lambda: tf.squeeze( tf.one_hot( tf.cast( obj_class_probs, tf.int32 ), num_classes, axis=-1 ) ) ) # [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
+    scores = confs * obj_class_probs # [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES]
+    scores = tf.reshape(scores, (bs, -1, tf.shape(scores)[-1])) # [BS, gy * gx * NUM_ANCHORS, NUM_CLASSES]
 
-    boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(boxes=bbox,
-                                                                                     scores=scores,
+    boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(boxes=bbox, # [batch_size, num_boxes, q, 4]
+                                                                                     scores=scores, # [batch_size, num_boxes, num_classes] 
                                                                                      max_output_size_per_class=max_output_size_per_class,
                                                                                      max_total_size=max_output_size,
                                                                                      iou_threshold=iou_threshold,
                                                                                      score_threshold=confidence_threshold)
     return boxes, scores, classes, valid_detections
-
-
-def myNMS(boxes_pred, threshold_1=0.7, threshold_2=0.4):
-  
-  """
-  Compute NMS without scores
-  
-  Input:
-    boxes_pred - bounding boxes predicted by model
-    
-    threshold_1 - if boxes overlap more than this, then "join"
-    
-    threshold_2 - if boxes overlap more less this, then they differ enough to be differen objects
-    
-  Output:
-    unique_boxes - the set of unique bounding boxes
-  
-  """
-  
-  # Compute IOU
-  iou_scores = iou(boxes_pred, boxes_pred) # 256, 256
-  dim = iou_scores.shape[0]
-
-  # Get the upper triangle of the matrix
-  a = tf.range(dim)[tf.newaxis, :]
-  b = tf.range(dim)[:, tf.newaxis]
-  cond = tf.greater(a, b)
-  upp_triangle = tf.cast(cond, tf.float32)
-  iou_scores = iou_scores * upp_triangle # (1 - tf.eye(num_rows=dim)) * tf.cast(tfp.math.fill_triangular([1]*int(dim2), upper=True), dtype=iou_scores.dtype)
-  
-  # A common denominator will be found between the boxes that overlap
-  max_iou_scores_horizontal = tf.math.reduce_max(iou_scores, axis=1)
-  indices_of_boxes_overlap = tf.reshape(tf.where(max_iou_scores_horizontal > threshold_1), [-1])
-
-  # Account for the boxes that don't overlap with any as well - the loners
-  max_iou_scores_vertical = tf.math.reduce_max(iou_scores, axis=0)
-  indices_of_boxes_unique = tf.reshape(tf.where(max_iou_scores_vertical < threshold_2), [-1])
-
-  # Combine to get all the unique boxes
-  indices_of_unique_boxes = tf.sets.union(indices_of_boxes_overlap[None, ...], indices_of_boxes_unique[None, ...]).values
-  final_boxes = tf.gather(boxes_pred, indices_of_unique_boxes)
-
-  return final_boxes
 
 
 def decode_model_outputs(pred, anchors):

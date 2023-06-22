@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from src.postprocessing import bbox_iou, decode_model_outputs
 
-def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5, lambda_class = 1):
+def lossFunction(anchors, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5, lambda_class = 1):
     def loss(y_true, y_pred): 
         """
         y_true: [BS, grid_size, grid_size, num_anchors, (y, x, h, w, p, obj_class)] - output of TransformBoxes.bboxes_to_grid()
@@ -13,7 +13,7 @@ def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda
         """
         
         # Split y_pred
-        pred_bbox, pred_confidence, pred_obj_class, pred_cell_box = decode_model_outputs(y_pred, anchors)
+        pred_bbox, pred_confidence, pred_obj_class, pred_cell_box = decode_model_outputs(y_pred, anchors) # [BS, gy, gx, NUM_ANCHORS, 4], [BS, gy, gx, NUM_ANCHORS, 1], [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES], [BS, gy, gx, NUM_ANCHORS, 4]
         pred_yx = pred_cell_box[..., :2]
         pred_hw = pred_cell_box[..., 2:]
 
@@ -42,15 +42,15 @@ def lossFunction(anchors, NUM_CLASSES, ignore_thresh=0.5, lambda_box = 5, lambda
         ignore_mask = tf.cast(max_iou < ignore_thresh, tf.float32) # [BS, gy, gx, anchor]
 
         # Get Regression Loss
-        yx_loss = obj_mask * bbox_loss_scale * tf.reduce_sum(tf.square( true_yx - pred_yx ), axis=-1) # [BS, gy, gx, anchor]
-        hw_loss = obj_mask * bbox_loss_scale * tf.reduce_sum(tf.square( tf.sqrt(true_hw) - tf.sqrt(pred_hw) ), axis=-1) # [BS, gy, gx, anchor]
+        yx_loss = obj_mask * bbox_loss_scale * tf.reduce_sum(tf.square( true_yx - pred_yx ), axis=-1) # out: [BS, gy, gx, anchor]
+        hw_loss = obj_mask * bbox_loss_scale * tf.reduce_sum(tf.square( tf.sqrt(tf.abs(true_hw)) - tf.sqrt(tf.abs(pred_hw)) ), axis=-1) # out: [BS, gy, gx, anchor]
 
         # Get Confidence Loss
-        conf_loss = tf.squeeze(K.binary_crossentropy(true_confidence, pred_confidence)) # [BS, gy, gx, anchor]
+        conf_loss = tf.squeeze(K.binary_crossentropy(true_confidence, pred_confidence)) # out: [BS, gy, gx, anchor]
         conf_loss =  obj_mask * conf_loss + lambda_noobj * (1.-obj_mask) * ignore_mask * conf_loss
 
         # Get Classification Loss
-        class_loss = K.sparse_categorical_crossentropy(true_obj_class, pred_obj_class) # [BS, gy, gx, anchor]
+        class_loss = obj_mask * K.sparse_categorical_crossentropy(true_obj_class, pred_obj_class) # out: [BS, gy, gx, anchor]
 
         yx_loss = tf.reduce_sum(yx_loss, axis=(1, 2, 3))
         hw_loss = tf.reduce_sum(hw_loss, axis=(1, 2, 3))
