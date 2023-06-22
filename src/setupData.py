@@ -142,31 +142,3 @@ def load_coco_dataset(args, coco_path, augment_func = None, split = 'train'):
         dataset = dataset.map(lambda x, y: augment_func((x, y)), num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
-
-
-def setup_data(x, size):
-  
-  """
-  Function passed in .map for tf.dataset.Dataset. Will setup the size for each image
-  
-  Input:
-    x - sample from the dataset
-    
-  Returns:
-    img - resized, normalized image to use
-    
-    label - tuple to use for the 4 outputs of the model
-  
-  """  
-
-  img = x['image']
-  img = tf.image.resize(img, size=size, method='nearest')
-  img = img / 255
-  
-  bbx = x['objects']['bbox']
-  
-  yxyx = Un_Normalize(bbx, shape=img.shape)
-  yxhw = yxyx_to_yxhw(yxyx)
-  yxhw_normalized = Normalize(yxhw, shape=img.shape)
-
-  return img, (yxhw_normalized, yxhw_normalized, yxhw_normalized, yxhw_normalized) # y_c, x_c, h, w all between 0 and 1; id

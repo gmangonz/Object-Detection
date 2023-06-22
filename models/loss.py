@@ -3,11 +3,19 @@ import tensorflow.keras.backend as K
 from src.postprocessing import bbox_iou, decode_model_outputs
 
 def lossFunction(anchors, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5, lambda_class = 1):
+
+    """
+    Wrapper to compute the loss function
+    
+    Inputs: anchors - [BS, W, H]
+    
+    """
+
     def loss(y_true, y_pred): 
         """
         y_true: [BS, grid_size, grid_size, num_anchors, (y, x, h, w, p, obj_class)] - output of TransformBoxes.bboxes_to_grid()
         
-        y_pred: [BS, gridy, gridx, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, p, obj_class)
+        y_pred: [BS, gridy, gridx, NUM_ANCHORS, 4 + 1 + NUM_CLASSES] (y, x, h, w, p, NUM_CLASSES)
 
         y, x, h, w are values between 0 and 1
         """
@@ -28,7 +36,7 @@ def lossFunction(anchors, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5,
         grid = tf.meshgrid(tf.range(grid_size[0]), tf.range(grid_size[0]))
         grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2) # [gy, gx, 1, 2]
         global_yx = (true_yx + tf.cast(grid, tf.float32)) / tf.cast(grid_size, tf.float32)
-        global_hw = tf.math.log(1e-16 + true_hw / anchors)
+        global_hw = tf.math.log(1e-16 + true_hw / anchors[..., ::-1])
         true_bbox = tf.concat([global_yx, global_hw], axis=-1)
 
         # Get Object mask

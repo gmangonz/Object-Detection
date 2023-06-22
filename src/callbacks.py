@@ -2,7 +2,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
-from utils import visualize_boxes
+from src.utils import visualize_boxes
 import warnings
 
 class DisplayCallback(tf.keras.callbacks.Callback):
@@ -10,19 +10,27 @@ class DisplayCallback(tf.keras.callbacks.Callback):
   def __init__(self, 
                img_path, 
                args, 
+               anchors,
                **kwargs):
     
     super(DisplayCallback, self).__init__(**kwargs)
-    self.test_img_for_epoch_viz = img_to_array(load_img(img_path, target_size=args.img_size)) / 255
+    self.img = img_to_array(load_img(img_path, target_size=args.img_size)) / 255
     self.scale = tf.constant([args.img_size[0], args.img_size[1], args.img_size[0], args.img_size[1]], dtype=tf.float32)
+    self.anchors = anchors
 
   def on_epoch_begin(self, epoch, logs=None):
     
     if (epoch + 1) % 3 == 0 or epoch == 0:
 
-      out = self.model.predict(self.img[None, ...])
+        predicted = self.model.model(self.img[None, ...], training=False)
 
-      visualize_boxes(self.img, out[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
+        boxes1, _, _ = self.model.post_process(predicted[0], self.anchors[0])
+        boxes2, _, _ = self.model.post_process(predicted[1], self.anchors[1])
+        boxes3, _, _ = self.model.post_process(predicted[2], self.anchors[2])
+
+        visualize_boxes(self.img, boxes1[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
+        visualize_boxes(self.img, boxes2[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
+        visualize_boxes(self.img, boxes3[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
 
 
 class SaveModel(tf.keras.callbacks.ModelCheckpoint):
@@ -65,13 +73,13 @@ class SaveModel(tf.keras.callbacks.ModelCheckpoint):
         super(SaveModel, self).on_batch_end(epoch, logs)
 
 
-def create_callbacks(filepath_name, args, model_to_save, img_path = r'D:\DL-CV-ML Projects\Turion_Space\Updated_Turion_Space\imgs\img.png'):
+def create_callbacks(filepath_name, args, model_to_save, anchors, img_path = r'D:\DL-CV-ML Projects\Turion_Space\Updated_Turion_Space\imgs\img.png'):
     
     early_stop = EarlyStopping(
         monitor              = args.monitor, 
         min_delta            = 0.01, 
         patience             = 7, 
-        mode                 = 'min', 
+        mode                 = 'auto', 
         restore_best_weights = True
     )
 
@@ -98,7 +106,8 @@ def create_callbacks(filepath_name, args, model_to_save, img_path = r'D:\DL-CV-M
 
     display = DisplayCallback(
         img_path = img_path,
-        args     = args
+        args     = args,
+        anchors  = anchors
     )
 
     return [early_stop, checkpoint, reduce_on_plateau, display]

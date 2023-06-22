@@ -513,7 +513,7 @@ class RandomRotate(Converter):
         img_Rotate = tfa.image.rotate(img, angles=degree_angle*(np.pi/180), interpolation='nearest', fill_mode='nearest')
 
         # Rotate Bounding Boxes
-        bboxes = self.Un_Normalize(bboxes_in, img.shape)                                                                   # y1, x1, y2, x2
+        bboxes = self.Un_Normalize(bboxes_in, img.shape)                                                         # y1, x1, y2, x2
         bbx_extra = tf.transpose(tf.concat([[bboxes[:, 2], bboxes[:, 1], bboxes[:, 0], bboxes[:, 3]]], axis=-1)) # y2, x1, y1, x2
         bbx_extrA = tf.transpose(tf.concat([[bboxes[:, 2], bboxes[:, 3], bboxes[:, 0], bboxes[:, 1]]], axis=-1)) # y2, x2, y1, x1
         bbx_extrB = tf.transpose(tf.concat([[bboxes[:, 0], bboxes[:, 1], bboxes[:, 2], bboxes[:, 3]]], axis=-1)) # y1, x2, y2, x1

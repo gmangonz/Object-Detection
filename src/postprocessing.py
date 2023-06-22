@@ -153,7 +153,7 @@ def decode_model_outputs(pred, anchors):
   grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # [gy, gx, 1, 2]
 
   box_yx = (box_yx + tf.cast(grid, tf.float32)) / tf.cast(grid_size, tf.float32)
-  box_hw = tf.exp(box_hw) * anchors
+  box_hw = tf.exp(box_hw) * anchors[..., ::-1]
   bbox   = tf.concat([box_yx, box_hw], axis=-1)
 
   return bbox, confidence, obj_class, pred_cell_box
