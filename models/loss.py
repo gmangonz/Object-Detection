@@ -21,7 +21,7 @@ def lossFunction(anchors, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5,
         """
         
         # Split y_pred
-        pred_bbox, pred_confidence, pred_obj_class, pred_cell_box = decode_model_outputs(y_pred, anchors) # [BS, gy, gx, NUM_ANCHORS, 4], [BS, gy, gx, NUM_ANCHORS, 1], [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES], [BS, gy, gx, NUM_ANCHORS, 4]
+        pred_bbox, pred_confidence, pred_obj_class, pred_cell_box = decode_model_outputs(y_pred, anchors) # [BS, gy, gx, NUM_ANCHORS, (y, x, h, w)], [BS, gy, gx, NUM_ANCHORS, 1], [BS, gy, gx, NUM_ANCHORS, NUM_CLASSES], [BS, gy, gx, NUM_ANCHORS, (y, x, h, w)]
         pred_yx = pred_cell_box[..., :2]
         pred_hw = pred_cell_box[..., 2:]
 
