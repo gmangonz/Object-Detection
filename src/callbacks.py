@@ -28,9 +28,9 @@ class DisplayCallback(tf.keras.callbacks.Callback):
         boxes2, _, _ = self.model.post_process(predicted[1], self.anchors[1])
         boxes3, _, _ = self.model.post_process(predicted[2], self.anchors[2])
 
-        visualize_boxes(self.img, boxes1[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
-        visualize_boxes(self.img, boxes2[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
-        visualize_boxes(self.img, boxes3[0]*self.scale, figsize=(7, 7), linewidth=1, color=[0, 0, 1])
+        visualize_boxes(self.img, boxes1[0]*self.scale, figsize=(5, 5), linewidth=1, color=[0, 0, 1])
+        visualize_boxes(self.img, boxes2[0]*self.scale, figsize=(5, 5), linewidth=1, color=[0, 0, 1])
+        visualize_boxes(self.img, boxes3[0]*self.scale, figsize=(5, 5), linewidth=1, color=[0, 0, 1])
 
 
 class SaveModel(tf.keras.callbacks.ModelCheckpoint):
