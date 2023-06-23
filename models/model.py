@@ -63,7 +63,7 @@ class MyModel(tf.keras.Model):
         self.img_size = img_size
         self.train_step_counter = tf.Variable(0, dtype=tf.int32, trainable=False)
         self.model = make_dummy_model(img_size, grid_sizes, classes = args.NUM_CLASSES, num_anchors = 3)
-        self.transformBoxes = TransformBoxes(grid_sizes=grid_sizes, anchors=anchors)
+        self.transformBoxes = TransformBoxes(args=args, grid_sizes=grid_sizes, anchors=anchors)
         self.args = args
         self.anchors = anchors
         self.ada = augment_func
@@ -86,6 +86,12 @@ class MyModel(tf.keras.Model):
         boxes, scores, classes, _ = non_max_suppression(pred_bbox, pred_confidence, pred_obj_class, self.args.NUM_CLASSES, self.args.max_output_size, self.args.max_output_size_per_class, self.args.iou_threshold, self.args.confidence_threshold)
         return boxes, scores, classes
 
+    def get_iou(self, true_bboxes, true_mask, predicted, anchors):
+
+        boxes, _, _ = self.post_process(predicted, anchors)
+        iou = bbox_iou(true_bboxes, boxes) * true_mask # IOU out: [BS, N, max_output_size]
+        return tf.reduce_mean(iou, axis=(2, 1, 0))
+
     def train_step(self, ds_input): # image (BS, H, W, C), bboxes (BS, N, 5)
 
         self.train_step_counter.assign_add(1)
@@ -97,36 +103,23 @@ class MyModel(tf.keras.Model):
 
         # Trasform bboxes to grid inputs
         grid_aug_bboxes = self.transformBoxes(augmented_bboxes) # out: [BS, gy, gx, num_anchors, (y, x, h, w, p, obj_class)] x 3
-        y_true1 = grid_aug_bboxes[0]
-        y_true2 = grid_aug_bboxes[1]
-        y_true3 = grid_aug_bboxes[2]
         
         # Gradient
         with tf.GradientTape() as tape:
             
             # Get predicted and loss
             predicted = self.model(augmented_images, training=True) # out: [BS, gy, gx, num_anchors, (y, x, h, w, p, NUM_CLASSES)] x 3
-            loss = self.compiled_loss((y_true1, y_true2, y_true3), (predicted[0], predicted[1], predicted[2]))
+            loss = self.compiled_loss(grid_aug_bboxes, predicted)
         
         # Optimize
         trainable_weights = self.model.trainable_weights
         model_grads = tape.gradient(loss, trainable_weights)
         self.optimizer.apply_gradients(zip(model_grads, trainable_weights))
 
-        # Post processing
-        boxes1, _, _ = self.post_process(predicted[0], self.anchors[0])
-        boxes2, _, _ = self.post_process(predicted[1], self.anchors[1])
-        boxes3, _, _ = self.post_process(predicted[2], self.anchors[2])
-
-        # IOU out: [BS, N, max_output_size]
-        iou1 = bbox_iou(augmented_bboxes[..., :-1], boxes1) * true_mask
-        iou2 = bbox_iou(augmented_bboxes[..., :-1], boxes2) * true_mask
-        iou3 = bbox_iou(augmented_bboxes[..., :-1], boxes3) * true_mask
-
-        # Get mean IOU to update Ada
-        iou1 = tf.reduce_mean(iou1, axis=(2, 1, 0))
-        iou2 = tf.reduce_mean(iou2, axis=(2, 1, 0))
-        iou3 = tf.reduce_mean(iou3, axis=(2, 1, 0))
+        # Get Resulting IOU
+        iou1 = self.get_iou(augmented_bboxes[..., :-1], true_mask, predicted[0], self.anchors[0])
+        iou2 = self.get_iou(augmented_bboxes[..., :-1], true_mask, predicted[1], self.anchors[1])
+        iou3 = self.get_iou(augmented_bboxes[..., :-1], true_mask, predicted[2], self.anchors[2])
         total_iou = (iou1 + iou2 + iou3) / 3.
 
         # Update metrics
