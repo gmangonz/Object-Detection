@@ -5,6 +5,7 @@ from src.augmentations import Converter
 class TransformBoxes(Converter):
 
     def __init__(self, 
+                 args,
                  grid_sizes = [8, 16, 32],
                  anchors = [[(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
                             [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
@@ -12,8 +13,14 @@ class TransformBoxes(Converter):
                  **kwargs):
 
         super(TransformBoxes, self).__init__(**kwargs)
-        self.grid_sizes = grid_sizes
-        self.anchors = anchors
+        self.num_scales = len(grid_sizes)
+        self.grid_sizes = tf.convert_to_tensor(grid_sizes)
+        self.anchors = tf.convert_to_tensor(anchors)
+        self.num_anchors = tf.shape(self.anchors)[1]
+        self.num_anchors_per_scale = tf.cast(tf.math.count_nonzero(self.anchors, axis=[0, -1]) / 2, dtype=tf.int32)
+        self.args = args
+        
+        assert len(grid_sizes) == tf.shape(self.anchors)[0], 'Number of scales to use must match dimension 0 of anchors'
 
     def iou_bbox_v_anchors(self, boxes1, anchors):
 
@@ -46,7 +53,7 @@ class TransformBoxes(Converter):
         """
         bboxes_shape      = tf.shape(bboxes)
         bs                = bboxes_shape[0]
-        y_true_out        = tf.zeros((bs, grid_size, grid_size, num_anchors, 6)) # [BS, grid_size, grid_size, num_anchors, 6]
+        y_true_out        = tf.zeros((bs, grid_size, grid_size, num_anchors, tf.constant(6, dtype=tf.int32))) # [BS, grid_size, grid_size, num_anchors, 6]
         bboxes, obj_class = tf.split(bboxes, [4, 1], axis=-1) # # [BS, N, 4], [BS, N, 1]
         
         mask       = self.mask(bboxes)[..., 0][..., None] # [BS, N, 1]
@@ -54,6 +61,7 @@ class TransformBoxes(Converter):
         y, x, h, w = tf.split(bboxes, 4, axis=-1) # [BS, N, 1], [BS, N, 1], [BS, N, 1], [BS, N, 1] with values between 0 and 1
 
         # Get the cell bbox belongs to and the coordinates it would lie inside the cell
+        grid_size       = tf.cast(grid_size, bboxes.dtype)
         grid_y, grid_x  = tf.cast(grid_size * y, tf.int32), tf.cast(grid_size * x, tf.int32)  # [BS, N, 1], [BS, N, 1] where 1 is the respective index of the cell y, x fall into 
         y_inside_cell   = grid_size * y - tf.cast(grid_y, dtype=y.dtype)
         x_inside_cell   = grid_size * x - tf.cast(grid_x, dtype=x.dtype)
@@ -96,8 +104,10 @@ class TransformBoxes(Converter):
         final_indices = tf.boolean_mask(indices, tf.cast(tf.math.count_nonzero(updates, axis=-1), tf.bool)) # Remove those who don't have bboxes
 
         # Get output
-        return tf.tensor_scatter_nd_update(y_true_out, final_indices, final_updates) # y_true_out[batch][y][x][anchor] = (y, x, h, w, 1, class)
-    
+        transformed_bbox = tf.tensor_scatter_nd_update(y_true_out, final_indices, final_updates) # y_true_out[batch][y][x][anchor] = (y, x, h, w, 1, class)
+        return transformed_bbox
+        # return tf.RaggedTensor.from_tensor(transformed_bbox, ragged_rank=2)
+
     def call(self, bboxes):
 
         a = self.bboxes_to_grid(bboxes, self.grid_sizes[0], self.anchors[0], num_anchors=3) # [BS, grid_sizes[0], grid_sizes[0], 3, 6]
