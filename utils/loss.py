@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from src.postprocessing import bbox_iou, decode_model_outputs
+from utils.postprocess.postprocessing import bbox_iou, decode_model_outputs
 
 def lossFunction(anchors, ignore_thresh=0.5, lambda_box = 5, lambda_noobj = 0.5, lambda_class = 1):
 

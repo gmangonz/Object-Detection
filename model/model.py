@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 from models.bbox_preprocess import TransformBoxes
-from src.postprocessing import bbox_iou, decode_model_outputs, non_max_suppression
+from utils.postprocess.postprocessing import bbox_iou, decode_model_outputs, non_max_suppression
 
 class Mean(tf.keras.metrics.Mean):
     def update_state(self, y_true, y_pred, sample_weight=None):

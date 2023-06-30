@@ -1,5 +1,5 @@
 import tensorflow as tf
-from src.augmentations import RandomHorizontalFlip, RandomTranslate, RandomRotate, RandomZoom, RandomMirror, AddNoise, RandomGamma, GaussianBlur
+from model.augmentations import RandomHorizontalFlip, RandomTranslate, RandomRotate, RandomZoom, RandomMirror, AddNoise, RandomGamma, GaussianBlur
 
 class args:
     img_size = (256, 256)

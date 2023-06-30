@@ -2,7 +2,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
-from src.utils import visualize_boxes
+from utils.utils import visualize_boxes
 import warnings
 
 class DisplayCallback(tf.keras.callbacks.Callback):
