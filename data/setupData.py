@@ -2,7 +2,7 @@ import tensorflow as tf
 from tools.read_tfRecord import read_tfrecord
 import tensorflow_datasets as tfds
 import os
-from ..utils.utils import Un_Normalize, Normalize, yxyx_to_yxhw
+from utils.utils import Un_Normalize, Normalize, yxyx_to_yxhw
 
 def if_resize_with_path(image, bbox, image_shape):
 
