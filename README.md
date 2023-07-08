@@ -30,7 +30,7 @@ conda activate tf-gpu
 
 # How it works
 
-This project has helped me understand the process behind object detectors which includes: data processing, model construction and output processing. Below I will explain the jist of these processes as I believe to understand something, you should be able to explain it. 
+This project has helped me understand the process behind object detectors which includes: data processing, model construction and output processing. Below I will explain the jist of these processes to enforce my understanding of the respective topics. 
 
 ## Running the data preprocessing
 
