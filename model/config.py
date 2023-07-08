@@ -49,12 +49,12 @@ num_anchors_per_scale = tf.math.count_nonzero(norm_anchors, axis=[0, -1]) / 2
 assert len(grid_sizes) == norm_anchors.shape[0]
 
 
-voc_train_ds_path = r"D:\DL-CV-ML Projects\Object Detection\OLD\Object Detection (OLD)\data\voc\voc2012_train.tfrecord"
-voc_val_ds_path = r"D:\DL-CV-ML Projects\Object Detection\OLD\Object Detection (OLD)\data\voc\voc2012_val.tfrecord"
-coco_train_ds_path = r"D:\DL-CV-ML Projects\Object Detection\repo\data\COCO_data_train.tfrecord"
-coco_val_ds_path = r"D:\DL-CV-ML Projects\Object Detection\repo\data\COCO_data_val.tfrecord"
-img_path = r'D:\DL-CV-ML Projects\Object Detection\repo\Object Detection\data\img.png'
-save_model_path = r'D:\DL-CV-ML Projects\Object Detection\repo\Object Detection\model\model_weights\model.h5'
+voc_train_ds_path  = r"D:\DL-CV-ML Projects\Object Detection\OLD\Object Detection (OLD)\data\voc\voc2012_train.tfrecord"
+voc_val_ds_path    = r"D:\DL-CV-ML Projects\Object Detection\OLD\Object Detection (OLD)\data\voc\voc2012_val.tfrecord"
+coco_train_ds_path = r"D:\DL-CV-ML Projects\Object Detection\data\COCO_data_train.tfrecord"
+coco_val_ds_path   = r"D:\DL-CV-ML Projects\Object Detection\data\COCO_data_val.tfrecord"
+img_path           = r'D:\DL-CV-ML Projects\Object Detection\code\data\img.png'
+save_model_path    = r'D:\DL-CV-ML Projects\Object Detection\code\model\model_weights\model.h5'
 
 augmentations = [RandomHorizontalFlip(), 
                  RandomTranslate(translate=args.aug_translate), 
