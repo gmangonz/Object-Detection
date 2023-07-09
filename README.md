@@ -4,8 +4,9 @@ This repository contains my implementation of object detection from scratch in T
 
 # Requirements
 1. Python 3.7
-2. Tensorflow 2.6
+2. Tensorflow-gpu 2.6.0
 3. Tensorflow-addons
+4. Keras
 
 Additional requirements listed in requirements.yaml file.
 
@@ -33,12 +34,11 @@ conda activate tf-gpu
 This project has helped me understand the process behind object detectors which includes: data processing, model construction and output processing. Below I will explain the jist of these processes to enforce my understanding of the respective topics. 
 
 ## Running the data preprocessing
-
-...
+(in progress)
 
 ## Data Augmentation
 
-As a little bonus, I decided to implement adaptive data augmentation for training ...
+As a little bonus, I decided to implement adaptive data augmentation for training ... (in progress)
 
 ## Model
 
