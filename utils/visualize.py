@@ -112,6 +112,7 @@ def plot_grid_anchors(image, bboxes, grid_anchors, figsize, anchors, diplay_text
 
     plt.scatter(points_x, points_y, marker='o', c='red')
     plt.show()
+    return plt
     print(f'Total bboxes: {num_bboxes}, Total anchors: {items_with_anchors}')
 
 
