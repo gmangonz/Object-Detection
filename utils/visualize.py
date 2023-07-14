@@ -4,7 +4,7 @@ import tensorflow as tf
 from matplotlib.ticker import AutoMinorLocator, FixedLocator
 
 
-def plot_grid_anchors(image, bboxes, grid_anchors, figsize, anchors, diplay_text, plotwhat):
+def plot_grid_anchors(image, bboxes, grid_anchors, figsize, anchors, diplay_text, plotwhat, save_to=None):
     """
     Inputs:
         image: [BS, H, W, C] or [H, W, C]
@@ -111,13 +111,14 @@ def plot_grid_anchors(image, bboxes, grid_anchors, figsize, anchors, diplay_text
                     items_with_anchors+=1
 
     plt.scatter(points_x, points_y, marker='o', c='red')
+    if save_to != None:
+        plt.savefig(save_to, bbox_inches='tight', pad_inches=0.0)
     plt.show()
-    return plt
     print(f'Total bboxes: {num_bboxes}, Total anchors: {items_with_anchors}')
 
 
 
-def visualize_outputs(imgs, bboxes, scale, figsize, linewidth, color):
+def visualize_outputs(imgs, bboxes, scale, figsize, linewidth, color, save_to=None):
 
     num_images = len(imgs)
     titles = ['Image {}'.format(i+1) for i in range(num_images)]
@@ -144,34 +145,38 @@ def visualize_outputs(imgs, bboxes, scale, figsize, linewidth, color):
         else:
             ax.axis('off')
     plt.tight_layout()
+    if save_to != None:
+        plt.savefig(save_to, bbox_inches='tight', pad_inches=0.0)
     plt.show()
     
 
-def visualize_boxes(image, boxes, figsize=(7, 7), linewidth=1, color=[0, 0, 1]):
+def visualize_boxes(image, boxes, figsize=(7, 7), linewidth=1, color=[0, 0, 1], save_to=None):
   
-  """
-  Inputs: 
+    """
+    Inputs: 
     image - image to visualize
-    
+
     boxes - unnormalized bounding boxes
-    
+
     figsize - size of figure to display
-    
+
     linewidth - line width of bounding boxes
-    
+
     color - color for bounding boxes
-    
-  """  
-  
-  image = np.array(image)
-  plt.figure(figsize=figsize)
-  plt.axis("off")
-  plt.imshow(image)
-  ax = plt.gca()
-  for box in boxes:
-      y1, x1, y2, x2 = box
-      w, h = x2 - x1, y2 - y1
-      patch = plt.Rectangle(
-          [x1, y1], w, h, fill=False, edgecolor=color, linewidth=linewidth)
-      ax.add_patch(patch)
-  plt.show()
+
+    """  
+
+    image = np.array(image)
+    plt.figure(figsize=figsize)
+    plt.axis("off")
+    plt.imshow(image)
+    ax = plt.gca()
+    for box in boxes:
+        y1, x1, y2, x2 = box
+        w, h = x2 - x1, y2 - y1
+        patch = plt.Rectangle(
+            [x1, y1], w, h, fill=False, edgecolor=color, linewidth=linewidth)
+        ax.add_patch(patch)
+    if save_to != None:
+        plt.savefig(save_to, bbox_inches='tight', pad_inches=0.0)
+    plt.show()
