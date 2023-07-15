@@ -49,7 +49,7 @@ After running ....
 
   Ada      |      Ada2        |
 :-------------------------:|:------------------------:|
-| <img src="images\ada_high_error.jpg" width=500px> | <img src="images\ada_mid_error.jpg" width=500px> |
+| <img src="images\ada_high_error.jpg" width=600px> | <img src="images\ada_mid_error.jpg" width=600px> |
 
 
 ## Model
