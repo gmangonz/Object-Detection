@@ -47,10 +47,13 @@ After running ....
 
 ## Data Augmentation
 
-  Ada      |      Ada2        |
+  Ada with high error      |      Ada with lower error        |
 :-------------------------:|:------------------------:|
 | <img src="images\ada_high_error.jpg" width=600px> | <img src="images\ada_mid_error.jpg" width=600px> |
 
+  Ada with some error      |      Ada with low error        |
+:-------------------------:|:------------------------:|
+| <img src="images\ada_mid_low_error.jpg" width=600px> | <img src="images\ada_low_error.jpg" width=600px> |
 
 ## Model
 
