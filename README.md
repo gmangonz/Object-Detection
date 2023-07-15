@@ -41,17 +41,21 @@ Below is an example of the dataset
 
 After running ....
 
-  First set of anchor boxes      |      Second set of anchor boxes        |      Third set of anchor boxes        |
+  First set of anchor boxes      |      Second set of anchor boxes        |
 :-------------------------:|:------------------------:|
-| <img src="images\image_grid_0.jpg" width=500px> | <img src="images\image_grid_1.jpg" width=500px> | <img src="images\image_grid_2.jpg" width=500px> |
+| <img src="images\image_grid_0.jpg" width=500px> | <img src="images\image_grid_1.jpg" width=500px> |
+
+|      Third set of anchor boxes        |
+:-------------------------:|
+| <img src="images\image_grid_2.jpg" width=500px> |
 
 ## Data Augmentation
 
-  Ada with high error      |      Ada with lower error        |
+  Ada with high error (low accuracy)    |      Ada with lower error        |
 :-------------------------:|:------------------------:|
 | <img src="images\ada_high_error.jpg" width=600px> | <img src="images\ada_mid_error.jpg" width=600px> |
 
-  Ada with some error      |      Ada with low error        |
+  Ada with even lower error      |      Ada with low error (high accuracy)       |
 :-------------------------:|:------------------------:|
 | <img src="images\ada_mid_low_error.jpg" width=600px> | <img src="images\ada_low_error.jpg" width=600px> |
 
