@@ -34,11 +34,21 @@ conda activate tf-gpu
 This project has helped me understand the process behind object detectors which includes: data processing, model construction and output processing. Below I will explain the jist of these processes to enforce my understanding of the respective topics. 
 
 ## Running the data preprocessing
-(in progress)
+
+Below is an example of the dataset
+
+<img src="images\image.jpg" width=500px> 
+
+After running ....
+
+| <img src="images\image_grid_0.jpg" width=500px> | <img src="images\image_grid_1.jpg" width=500px> | <img src="images\image_grid_2.jpg" width=500px> |
 
 ## Data Augmentation
 
-As a little bonus, I decided to implement adaptive data augmentation for training ... (in progress)
+  Initial point clouds of a single frame      |      Result after segmentation        |
+:-------------------------:|:------------------------:|
+<!-- | <img src="images\Downsampling.jpg" width=500px> | <img src="images\RANSAC.jpg" width=500px> | -->
+
 
 ## Model
 
