@@ -47,9 +47,9 @@ After running ....
 
 ## Data Augmentation
 
-  Initial point clouds of a single frame      |      Result after segmentation        |
+  Ada      |      Ada2        |
 :-------------------------:|:------------------------:|
-<!-- | <img src="images\Downsampling.jpg" width=500px> | <img src="images\RANSAC.jpg" width=500px> | -->
+| <img src="images\ada_high_error.jpg" width=500px> | <img src="images\ada_mid_error.jpg" width=500px> |
 
 
 ## Model
