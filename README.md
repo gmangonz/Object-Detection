@@ -39,7 +39,7 @@ Below is sample image in the dataset.
 
 <img src="images\image.jpg" width=500px> 
 
-To begin object detection, the data needs to be preprocessed to a certain set input for the model. Taking YOLO's approach, the data is processed into 3 different levels. At each level, the image is split into grid cells. Each cell is responsible for detecting 3 objects. Why 3 objects? Because we pre-define 3 anchor boxes that each cell cell uses to detect objects. 
+To initiate object detection, the data requires preprocessing to fit a specific input format for the model. Following the approach of YOLO (You Only Look Once), the data is processed at three different levels, where at each level the image is divided into distinct grid cell sizes. Now each cell is responsible for detecting 3 objects. Why 3 objects? Because we pre-define three anchor boxes that each cell uses to detect objects. 
 
 After running ```transform_bboxes.py```
 
