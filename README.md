@@ -41,6 +41,8 @@ Below is an example of the dataset
 
 After running ....
 
+  First set of anchor boxes      |      Second set of anchor boxes        |      Third set of anchor boxes        |
+:-------------------------:|:------------------------:|
 | <img src="images\image_grid_0.jpg" width=500px> | <img src="images\image_grid_1.jpg" width=500px> | <img src="images\image_grid_2.jpg" width=500px> |
 
 ## Data Augmentation
