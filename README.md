@@ -39,7 +39,7 @@ Below is an example of the dataset
 
 <img src="images\image.jpg" width=500px> 
 
-After running ....
+After running ```transform_bboxes.py```
 
   First set of anchor boxes      |      Second set of anchor boxes        |
 :-------------------------:|:------------------------:|
@@ -47,7 +47,7 @@ After running ....
 
 |      Third set of anchor boxes        |
 :-------------------------:|
-| <img src="images\image_grid_2.jpg" width=500px> |
+| <img src="images\image_grid_2.jpg" width=400> |
 
 ## Data Augmentation
 
