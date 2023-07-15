@@ -35,21 +35,25 @@ This project has helped me understand the process behind object detectors which 
 
 ## Running the data preprocessing
 
-Below is an example of the dataset
+Below is sample image in the dataset.
 
 <img src="images\image.jpg" width=500px> 
 
+To begin object detection, the data needs to be preprocessed to a certain set input for the model. Taking YOLO's approach, the data is processed into 3 different levels. At each level, the image is split into grid cells. Each cell is responsible for detecting 3 objects. Why 3 objects? Because we pre-define 3 anchor boxes that each cell cell uses to detect objects. 
+
 After running ```transform_bboxes.py```
 
-  First set of anchor boxes      |      Second set of anchor boxes        |
+  Output of large grid cells     |      Output of mid-sized grid cells        |
 :-------------------------:|:------------------------:|
 | <img src="images\image_grid_0.jpg" width=500px> | <img src="images\image_grid_1.jpg" width=500px> |
 
-|      Third set of anchor boxes        |
+|      Output of small grid cells        |
 :-------------------------:|
 | <img src="images\image_grid_2.jpg" width=400> |
 
 ## Data Augmentation
+
+As a little bonus, I decided to implement adaptive data augmentation. This means that while the model trains, data augmentation will occur depending on the error produced by the model. For example, if the model is starting off and the error is high, the data augmentation will be minimal. However, once the error begins to decrease as the training continues, data augmentation will be occur at a higher frequency and different transformations will stack to add randomness. 
 
   Ada with high error (low accuracy)    |      Ada with lower error        |
 :-------------------------:|:------------------------:|
