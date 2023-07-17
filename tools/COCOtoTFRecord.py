@@ -114,11 +114,6 @@ def create_tf_records(data_dir, output_path, split='train'):
     print("TFRecord files created successfully!")
 
 
-# data_directory = r"D:\DL-CV-ML Projects\Object Detection\Updated_Turion_Space\Test\Object Detection\data"
-# output_tfrecord = r"D:\DL-CV-ML Projects\Object Detection\Updated_Turion_Space\Test\Object Detection\data\COCO_data_val.tfrecord"
-# create_tf_records(data_directory, output_tfrecord, split='val')
-
-
 def create_tf_example_test(image_path, info):
 
     # Get bytes from the image file
@@ -169,6 +164,3 @@ def create_tf_records_test(data_dir, output_path):
     writer.close()
 
     print("TFRecord files created successfully!")
-
-
-# create_tf_records_test(data_directory, r"D:\DL-CV-ML Projects\Object Detection\Updated_Turion_Space\Test\Object Detection\data\COCO_data_test.tfrecord")
