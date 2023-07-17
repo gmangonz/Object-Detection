@@ -48,12 +48,12 @@ For each grid size in [8, 16, 32]:
   Make a matrix of zeros of size (BATCH SIZE, GRID SIZE Y, GRID SIZE X, 3, 6)
   For each image in the batch:
     For each bounding box in the image:
-      Find the grid the bounding box belongs to. This is done in lines 64-68 in ```transform_bboxes.py```
+      Find the grid the bounding box belongs to. This is done in lines 64-68 in `transform_bboxes.py`
       Get the IOU between the bounding box and pre-defined anchors
       At the given batch, for the grid y and grid x, and for the anchor box with max IOU, assign the following coordinates (y, x, h, w, 1, CLASS) in the matrix previously created
 ```
 
-I take advantage of broadcasting to avoid for loops and the results can be seen below.
+I take advantage of broadcasting to avoid for loops and the results can be seen below. Blue boxes correspond to the bounding boxes and yellow boxes are the assigned pre-defined anchor boxes.
 
   Output of large grid cells     |      Output of mid-sized grid cells        |
 :-------------------------:|:------------------------:|
