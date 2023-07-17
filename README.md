@@ -2,6 +2,16 @@
 
 This repository contains my implementation of object detection from scratch in Tensorflow to better understand how the end to end process. I've tried to keep the code minimal and understandable, and comment on it as much as I can.
 
+TODO:
+
+- [x] Get end to end pipleline to work with dummy model
+- [x] Build data augmentation
+- [ ] Build model (waiting for GPU units in Google Colab)
+- [ ] Train model (again GPU units)
+- [ ] Display model architecture
+- [ ] Get requirements.yaml file
+
+
 # Requirements
 1. Python 3.7
 2. Tensorflow-gpu 2.6.0
@@ -21,7 +31,8 @@ conda activate tf-gpu
 
 # Usage
 ## Data Preparation
-(in progress)
+
+The data set used is the COCO 2017 dataset. Run the following to download the dataset.
 
 ## Training
 (in progress)
