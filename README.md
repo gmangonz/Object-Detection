@@ -35,7 +35,6 @@ conda activate tf-gpu
 The data set used is the COCO 2017 dataset. Run the following to download the dataset.
 ```
 python getData.py --path PATH\TO\EXTRACT\DATA\TO --tfRecords 1 --output PATH\TO\PLACE\TFRECORD\FILES
-
 ```
 
 ## Training
