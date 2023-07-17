@@ -41,7 +41,19 @@ Below is sample image in the dataset.
 
 To initiate object detection, the data requires preprocessing to fit a specific input format for the model. Following the approach of YOLO (You Only Look Once), the data is processed at three different levels, where at each level the image is divided into distinct grid cell sizes. Now each cell is responsible for detecting 3 objects. Why 3 objects? Because we pre-define three anchor boxes that each cell uses to detect objects. 
 
-```transform_bboxes.py``` is responsible for this data preprocessing which can be seen below.
+```transform_bboxes.py``` is responsible for this data preprocessing which the algorithm can be described as follows:
+```
+For each grid size in [8, 16, 32]:
+  Get the pre-defined anchor boxes for the grid size
+  Make a matrix of zeros of size (BATCH SIZE, GRID SIZE Y, GRID SIZE X, 3, 6)
+  For each image in the batch:
+    For each bounding box in the image:
+      Find the grid the bounding box belongs to. This is done in lines 64-68 in ```transform_bboxes.py```
+      Get the IOU between the bounding box and pre-defined anchors
+      At the given batch, for the grid y and grid x, and for the anchor box with max IOU, assign the following coordinates (y, x, h, w, 1, CLASS) in the matrix previously created
+```
+
+I take advantage of broadcasting to avoid for loops and the results can be seen below.
 
   Output of large grid cells     |      Output of mid-sized grid cells        |
 :-------------------------:|:------------------------:|
@@ -50,6 +62,8 @@ To initiate object detection, the data requires preprocessing to fit a specific 
 |      Output of small grid cells        |
 :-------------------------:|
 | <img src="images\image_grid_2.jpg" width=400> |
+
+Of course the question now becomes, what happens if 2 bounding boxes of different objects are in the same grid and whose max IOU is with the same anchor box? This is where ```bbox_preprocess.py``` comes in. It assigns the second best (and even third best) anchor box to the object in question. However, because this is very unlikely to occur, I stick with ```transform_bboxes.py``` and sort the IOU's between bounding box and anchors so that the anchor is assigned to the bounding box with the higher max IOU. 
 
 ## Data Augmentation
 
