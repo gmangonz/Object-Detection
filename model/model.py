@@ -7,6 +7,10 @@ class Mean(tf.keras.metrics.Mean):
     def update_state(self, y_true, y_pred, sample_weight=None):
         super().update_state(y_true, sample_weight=sample_weight)
 
+def object_detector(img_size, grid_sizes, classes=100, num_anchors=3):
+
+    pass
+
 
 def make_dummy_model(img_size, grid_sizes, classes = 100, num_anchors = 3):
 
